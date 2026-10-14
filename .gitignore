@@ -1,0 +1,13 @@
+# 로컬/민감 설정
+config/config.local.php
+.env
+
+# 로그·캐시
+*.log
+/storage/
+
+# IDE·OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
