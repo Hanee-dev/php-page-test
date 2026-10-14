@@ -2,7 +2,7 @@
 declare(strict_types=1);
 /**
  * 공통 초기화: 설정 로드, 헬퍼 로드, 세션 시작
- * www/ 아래 진입점(index.php, send_mail.php)에서만 require
+ * public/ 아래 진입점(index.php, send_mail.php)에서만 require
  */
 define('BASE_PATH', dirname(__DIR__));
 

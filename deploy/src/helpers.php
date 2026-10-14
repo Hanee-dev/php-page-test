@@ -7,10 +7,10 @@ function e(?string $value): string
     return htmlspecialchars($value ?? '', ENT_QUOTES, 'UTF-8');
 }
 
-/** www/assets/img 에 파일이 있으면 그 경로, 없으면 placeholder 이미지 */
+/** public/assets/img 에 파일이 있으면 그 경로, 없으면 placeholder 이미지 */
 function img_url(string $file, int $w = 800, int $h = 600): string
 {
-    if (file_exists(BASE_PATH . '/www/assets/img/' . $file)) {
+    if (file_exists(BASE_PATH . '/public/assets/img/' . $file)) {
         return 'assets/img/' . $file;
     }
     $seed = pathinfo($file, PATHINFO_FILENAME);
