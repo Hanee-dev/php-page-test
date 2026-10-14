@@ -15,6 +15,9 @@ return [
         'pretty_urls' => true,
         // 개인정보처리방침에 표시하는 문의처
         'contact_email' => 'join@hanee.shop',
+        // 요청마다 storage/cache/schema_version 과 migrations/ 의 마지막 파일 이름을 비교해
+        // 새 마이그레이션이 있으면 그 요청에서 적용 (Cafe24 가 해외 IP 를 막아 배포 단계의 호출은 대개 실패)
+        'auto_migrate' => true,
     ],
 
     // 표시·입력 기준 시간대. DB 에는 항상 UTC 로 저장

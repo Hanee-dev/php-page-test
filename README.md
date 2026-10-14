@@ -42,7 +42,7 @@ cp deploy/config/config.local.example.php deploy/config/config.local.php
 # crypto.keys[1], crypto.hmac_key 에 `openssl rand -base64 32` 값을 각각 넣는다
 
 docker compose up -d                                        # http://localhost:8080
-docker compose exec web php /var/www/app/bin/migrate.php    # 스키마 생성
+docker compose exec web php /var/www/app/bin/migrate.php    # 스키마 생성 (생략해도 첫 요청 때 자동 적용)
 
 docker compose exec web php /var/www/tests/run.php          # 자동 테스트 (slowmail_test DB 사용)
 docker compose exec web sh /var/www/tests/e2e.sh            # 화면 흐름 확인
@@ -52,6 +52,7 @@ docker compose exec web php /var/www/app/bin/dispatch.php --now="2027-10-14 09:0
 ```
 
 Windows Git Bash 에서는 `MSYS_NO_PATHCONV=1` 을 앞에 붙인다 (컨테이너 경로가 변환되는 문제).
+DB 볼륨을 지우고 새로 만들었다면 `deploy/storage/cache/schema_version` 도 지운다 (남아 있으면 자동 마이그레이션이 이미 적용된 줄 안다).
 
 ## 배포 (GitHub Actions → Cafe24)
 
@@ -60,7 +61,26 @@ Windows Git Bash 에서는 `MSYS_NO_PATHCONV=1` 을 앞에 붙인다 (컨테이�
 1. Secrets 로 `deploy/config/config.local.php` 생성 (`deploy-tools/make-config.php`) — 하나라도 비면 배포 중단
 2. PHP 문법 검사
 3. FTP 동기화 (변경된 파일만, 이전에 올렸다가 삭제한 파일은 서버에서도 삭제)
-4. `POST /index.php?r=ops/migrate` (X-Ops-Token 헤더) 로 DB 마이그레이션
+4. `POST /index.php?r=ops/migrate` (X-Ops-Token 헤더) 보조 호출 — **대개 403 (실패해도 배포는 성공 처리)**.
+   실제 적용은 배포 후 첫 웹 요청 때 앱이 자동으로 한다 (`AutoMigrator`)
+
+### DB 마이그레이션
+
+Cafe24 는 **해외 IP 의 웹 접근을 차단**한다. GitHub Actions 러너는 해외 IP 라서 4번 호출은 대개 Apache 403 으로 끝난다.
+그래서 앱이 요청마다 `migrations/` 의 마지막 파일 이름과 `storage/cache/schema_version` 을 비교하고,
+다르면 그 요청에서 아직 적용되지 않은 마이그레이션을 적용한 뒤 기록한다(평소에는 파일 하나만 읽고 DB 에 접속하지 않음).
+실패하면 서버 error_log 에 `[slowmail] 자동 마이그레이션 실패` 를 남기고 다음 요청에서 다시 시도한다.
+끄려면 `config.php` 의 `app.auto_migrate` 를 `false` 로 둔다.
+
+수동으로 실행하려면 **한국 IP** 에서:
+
+```bash
+curl -d "" -H "X-Ops-Token: …" https://hanee.shop/index.php?r=ops/migrate
+# → {"ok":true,"applied":[...]}
+```
+
+`-d ""` 가 없으면(Content-Length 없는 POST) Cafe24 앞단 프록시가 404 를 돌려준다.
+긴 `ALTER` 처럼 오래 걸리는 스키마 변경은 첫 요청을 붙잡으므로 피하거나 위 방법으로 따로 실행한다.
 
 저장소 Settings → Environments → **production** 에 등록:
 

@@ -28,7 +28,13 @@ if ($route === 'index.php') {
 }
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
-$controller = new Controller(new Services($config, new Clock()), $config);
+$services = new Services($config, new Clock());
+$controller = new Controller($services, $config);
+
+// 배포 후 첫 요청에서 새 마이그레이션 적용. 평소엔 marker 파일만 확인하고, 실패해도 예외를 밖으로 내지 않는다
+if (cfg('app.auto_migrate')) {
+    $services->autoMigrator()->ensure();
+}
 
 try {
     match (true) {
