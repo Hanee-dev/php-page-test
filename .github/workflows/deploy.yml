@@ -3,7 +3,7 @@
 # 필요한 설정 (GitHub 저장소 → Settings → Secrets and variables → Actions)
 #   Secrets   : FTP_SERVER, FTP_USERNAME, FTP_PASSWORD
 #   Variables : FTP_PROTOCOL   (선택, 기본 ftp — 호스팅이 지원하면 ftps 권장)
-#               FTP_SERVER_DIR (선택, 기본 ./www/ — 웹 루트 경로, 끝에 / 필수)
+#               FTP_SERVER_DIR (선택, 기본 www/ — 웹 루트 경로, ./ 로 시작하지 말 것(Cafe24 FTP가 . 경로 거부), 끝에 / 필수)
 name: Deploy to Cafe24
 
 on:
@@ -37,7 +37,7 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           protocol: ${{ vars.FTP_PROTOCOL || 'ftp' }}
           local-dir: ./deploy/
-          server-dir: ${{ vars.FTP_SERVER_DIR || './www/' }}
+          server-dir: ${{ vars.FTP_SERVER_DIR || 'www/' }}
           # 원인 파악용 임시 설정: FTP 명령/응답 전체 출력 (해결 후 제거)
           log-level: verbose
           exclude: |

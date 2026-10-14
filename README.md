@@ -39,7 +39,7 @@ Actions 탭에서 수동 실행(Run workflow)도 가능합니다.
 | Secret | `FTP_USERNAME` | FTP 아이디 |
 | Secret | `FTP_PASSWORD` | FTP 비밀번호 |
 | Variable (선택) | `FTP_PROTOCOL` | `ftp`(기본) / `ftps` |
-| Variable (선택) | `FTP_SERVER_DIR` | 웹 루트 경로, 기본 `./www/` (끝에 `/`) |
+| Variable (선택) | `FTP_SERVER_DIR` | 웹 루트 경로, 기본 `www/` (끝에 `/`, `./`로 시작하지 말 것) |
 
 - 변경된 파일만 업로드하며, 동기화 상태는 서버의 `www/.ftp-deploy-sync-state.json`에 저장됩니다(`.htaccess`로 외부 접근 차단).
 - 이 액션이 올리지 않은 서버 파일(기존 `index.html` 등)은 삭제하지 않습니다.
