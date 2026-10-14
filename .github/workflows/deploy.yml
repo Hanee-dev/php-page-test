@@ -1,9 +1,12 @@
-# main 브랜치에 push되면 deploy/ 내용을 Cafe24 웹 루트(www/)에 동기화
+# main 브랜치에 push되면 deploy/ 내용을 Cafe24 FTP 최상위(/)에 동기화
+# (config/src/templates 는 www 바깥, www/ 가 웹 루트)
 #
 # 필요한 설정 (GitHub 저장소 → Settings → Secrets and variables → Actions)
 #   Secrets   : FTP_SERVER, FTP_USERNAME, FTP_PASSWORD
 #   Variables : FTP_PROTOCOL   (선택, 기본 ftp — 호스팅이 지원하면 ftps 권장)
-#               FTP_SERVER_DIR (선택, 기본 www/ — 웹 루트 경로, ./ 로 시작하지 말 것(Cafe24 FTP가 . 경로 거부), 끝에 / 필수)
+#               FTP_SERVER_DIR (선택, 기본 / — 절대 경로로 지정, 끝에 / 필수)
+#
+# Cafe24 FTP 주의: 로그인 시 /www 에서 시작하고, 국내 IP 제한이 켜져 있으면 Actions(해외 IP)에서 쓰기 불가
 name: Deploy to Cafe24
 
 on:
@@ -24,7 +27,7 @@ jobs:
     environment: production
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: PHP 문법 검사
         run: find deploy -name '*.php' -print0 | xargs -0 -n1 php -l
@@ -37,9 +40,7 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           protocol: ${{ vars.FTP_PROTOCOL || 'ftp' }}
           local-dir: ./deploy/
-          server-dir: ${{ vars.FTP_SERVER_DIR || 'www/' }}
-          # 원인 파악용 임시 설정: FTP 명령/응답 전체 출력 (해결 후 제거)
-          log-level: verbose
+          server-dir: ${{ vars.FTP_SERVER_DIR || '/' }}
           exclude: |
             **/.git*
             **/.git*/**
