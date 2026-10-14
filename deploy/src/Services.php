@@ -89,4 +89,14 @@ final class Services
     {
         return $this->made[__FUNCTION__] ??= new Migrator($this->pdo(), BASE_PATH . '/migrations', $this->clock);
     }
+
+    /** Migrator 는 Closure 로 넘겨, marker 가 최신이면 DB 에 접속하지 않게 한다 */
+    public function autoMigrator(): AutoMigrator
+    {
+        return $this->made[__FUNCTION__] ??= new AutoMigrator(
+            fn (): Migrator => $this->migrator(),
+            BASE_PATH . '/migrations',
+            BASE_PATH . '/storage/cache/schema_version',
+        );
+    }
 }
