@@ -1,9 +1,13 @@
 # main 브랜치에 push되면 deploy/ 내용을 Cafe24 FTP 최상위(/)에 동기화
 # (config/src/templates 는 www 바깥, www/ 가 웹 루트)
 #
-# 필요한 설정 (GitHub 저장소 → Settings → Secrets and variables → Actions)
+# 필요한 설정 (GitHub 저장소 → Settings → Environments → production)
 #   Secrets   : FTP_SERVER, FTP_USERNAME, FTP_PASSWORD
-#   Variables : FTP_PROTOCOL   (선택, 기본 ftp — 호스팅이 지원하면 ftps 권장)
+#               DB_NAME, DB_USER, DB_PASSWORD, (선택) DB_HOST
+#               CRYPTO_KEY_1, HMAC_KEY   ← openssl rand -base64 32  (원본은 비밀번호 관리자에도 보관!)
+#               OPS_TOKEN                ← openssl rand -hex 32
+#   Variables : APP_URL        (필수, 예: https://hanee.shop — 마이그레이션 호출·메일 링크에 사용)
+#               FTP_PROTOCOL   (선택, 기본 ftp — 호스팅이 지원하면 ftps 권장: 설정 파일에 DB 비밀번호가 담겨 전송됨)
 #               FTP_SERVER_DIR (선택, 기본 / — 절대 경로로 지정, 끝에 / 필수)
 #
 # Cafe24 FTP 주의: 로그인 시 /www 에서 시작하고, 국내 IP 제한이 켜져 있으면 Actions(해외 IP)에서 쓰기 불가
@@ -14,6 +18,7 @@ on:
     branches: [main]
     paths:
       - 'deploy/**'
+      - 'deploy-tools/**'
       - '.github/workflows/deploy.yml'
   workflow_dispatch:
 
@@ -28,6 +33,21 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+
+      # 비밀값은 git 에 두지 않고 배포할 때만 만든다 (웹 루트 밖 config/ 에 업로드됨)
+      - name: 운영 설정 파일 생성
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          CRYPTO_KEY_1: ${{ secrets.CRYPTO_KEY_1 }}
+          HMAC_KEY: ${{ secrets.HMAC_KEY }}
+          OPS_TOKEN: ${{ secrets.OPS_TOKEN }}
+        run: |
+          if [ -z "$APP_URL" ]; then echo "::error::Variables 에 APP_URL 을 설정해 주세요"; exit 1; fi
+          php deploy-tools/make-config.php > deploy/config/config.local.php
 
       - name: PHP 문법 검사
         run: find deploy -name '*.php' -print0 | xargs -0 -n1 php -l
@@ -45,3 +65,16 @@ jobs:
             **/.git*
             **/.git*/**
             **/README.txt
+            config/config.local.example.php
+
+      # FTP 만 쓸 수 있는 호스팅이라 서버에서 명령을 실행할 수 없으므로, 토큰으로 보호한 엔드포인트를 호출한다.
+      # pretty URL(FallbackResource) 동작 여부와 무관하게 index.php?r= 형태로 부른다.
+      - name: DB 마이그레이션
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+          OPS_TOKEN: ${{ secrets.OPS_TOKEN }}
+        run: |
+          curl --fail-with-body -sS --retry 3 --retry-delay 5 -X POST \
+            -H "X-Ops-Token: $OPS_TOKEN" \
+            "${APP_URL%/}/index.php?r=ops/migrate"
+          echo

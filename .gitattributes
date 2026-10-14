@@ -1,0 +1,4 @@
+# Windows(core.autocrlf)에서 체크아웃해도 컨테이너·리눅스에서 실행되는 파일은 LF 유지
+*.sh            text eol=lf
+dev/**          text eol=lf
+docker-compose.yml text eol=lf
