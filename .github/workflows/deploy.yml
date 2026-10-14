@@ -38,6 +38,8 @@ jobs:
           protocol: ${{ vars.FTP_PROTOCOL || 'ftp' }}
           local-dir: ./deploy/
           server-dir: ${{ vars.FTP_SERVER_DIR || './www/' }}
+          # 원인 파악용 임시 설정: FTP 명령/응답 전체 출력 (해결 후 제거)
+          log-level: verbose
           exclude: |
             **/.git*
             **/.git*/**
