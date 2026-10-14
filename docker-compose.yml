@@ -1,0 +1,30 @@
+# 로컬 개발 환경:  docker compose up -d  →  http://localhost:8080
+# 처음 한 번:      cp deploy/config/config.local.example.php deploy/config/config.local.php (키 채우기)
+#                  docker compose exec web php /var/www/app/bin/migrate.php
+services:
+  web:
+    build: ./dev
+    ports:
+      - "8080:80"
+    volumes:
+      - ./deploy:/var/www/app
+      - ./tests:/var/www/tests
+    depends_on:
+      - db
+
+  db:
+    # Cafe24 MariaDB 버전 확인 후 맞출 것
+    image: mariadb:10.11
+    environment:
+      MARIADB_DATABASE: slowmail
+      MARIADB_USER: slowmail
+      MARIADB_PASSWORD: slowmail
+      MARIADB_ROOT_PASSWORD: root
+    ports:
+      - "3307:3306"
+    volumes:
+      - ./dev/initdb:/docker-entrypoint-initdb.d:ro
+      - db-data:/var/lib/mysql
+
+volumes:
+  db-data:
