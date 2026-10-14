@@ -78,6 +78,11 @@ return [
         'stale_minutes' => 30,
     ],
 
+    // 발송 스케줄러(트리거). 현재는 목업만 있다 — 실제 방식은 나중에 구현체로 교체
+    'scheduler' => [
+        'driver' => 'mock',
+    ],
+
     'cron' => [
         'token' => '',
     ],

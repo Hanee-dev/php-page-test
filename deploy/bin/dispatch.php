@@ -1,9 +1,12 @@
 <?php
 declare(strict_types=1);
 /**
- * 도착 시각이 된 편지 발송 + 정리 작업 (CLI)
+ * 발송 로직(Dispatcher) 수동 실행 — 개발·검증용 (CLI)
  *   php bin/dispatch.php                           지금 기준
- *   php bin/dispatch.php --now="2031-01-01 09:00"  해당 시각(Asia/Seoul)인 것처럼 실행 — 검증용
+ *   php bin/dispatch.php --now="2031-01-01 09:00"  해당 시각(Asia/Seoul)인 것처럼 실행
+ *
+ * 주기 실행(스케줄러)은 범위 밖이라 목업(SlowMail\Scheduler\MockScheduler)만 있다.
+ * 운영에서 이 스크립트를 cron 에 등록하지 않는다 — 실제 스케줄러는 나중에 다른 방식으로 구현.
  */
 if (PHP_SAPI !== 'cli') {
     exit(1);

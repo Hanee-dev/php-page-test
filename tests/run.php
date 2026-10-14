@@ -267,6 +267,15 @@ check($r['deliver_on'] === '2027-10-14' && $r['status'] === 'delivered', '파기
 check(row($r2['letter']['public_id']) === [], '확인 안 된 편지는 만료 7일 뒤 삭제');
 check((int) $pdo->query('SELECT COUNT(*) FROM rate_limits')->fetchColumn() === 0, '오래된 요청 제한 기록 삭제');
 
+// ── 스케줄러(목업) ─────────────────────────────────────────────
+section('스케줄러 목업');
+$before = $pdo->query("SELECT COUNT(*), SUM(status = 'delivered') FROM letters")->fetch(PDO::FETCH_NUM);
+$scheduler = services('2030-01-01 09:00')->scheduler();
+$result = $scheduler->run(new DateTimeImmutable('2030-01-01 00:00', new DateTimeZone('UTC')));
+check($scheduler->name() === 'mock' && $result->mocked === true && $result->stats === [], '기본 드라이버는 mock, 결과는 mocked');
+check(count($scheduler->calls) === 1, '호출만 기록');
+check($pdo->query("SELECT COUNT(*), SUM(status = 'delivered') FROM letters")->fetch(PDO::FETCH_NUM) == $before, 'DB 를 건드리지 않음(발송 없음)');
+
 // ── 결과 ──────────────────────────────────────────────────────
 echo "\n" . str_repeat('─', 40) . "\n";
 echo sprintf("통과 %d · 실패 %d\n", $passed, count($failed));

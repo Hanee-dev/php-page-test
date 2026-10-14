@@ -80,6 +80,11 @@ final class Services
         return $this->made[__FUNCTION__] ??= new MailTemplates(BASE_PATH . '/templates/mail', $this->config['mail']);
     }
 
+    public function scheduler(): Scheduler\Scheduler
+    {
+        return $this->made[__FUNCTION__] ??= Scheduler\Factory::fromConfig($this->config['scheduler'] ?? []);
+    }
+
     public function migrator(): Migrator
     {
         return $this->made[__FUNCTION__] ??= new Migrator($this->pdo(), BASE_PATH . '/migrations', $this->clock);
