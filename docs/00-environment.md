@@ -57,6 +57,7 @@
 - 2026-10-14: 메일 발송은 인터페이스 레벨까지만 구축하기로 함. DB는 사용자가 생성·연결 완료
 - 2026-10-14: DB 버전 **MariaDB 10.x** 확인 → `SKIP LOCKED`(10.6+)·JSON 타입 없이 설계, 로컬은 MariaDB 10.11
 - 2026-10-14: 운영 비밀값은 GitHub Secrets → 배포 시 `config.local.php` 생성 방식으로 결정. 나머지(debug 시 확인 링크 노출, 앱 레벨 암호화 + 발송 30일 뒤 파기)는 기본값
+- 2026-10-14: 첫 운영 배포에서 Actions의 마이그레이션 호출이 Apache **403** → **Cafe24가 해외 IP의 웹 접근을 차단**함을 확인(한국 IP에서는 `curl -d ""`로 200, 바디 없는 POST는 앞단 프록시가 404). 마이그레이션은 **배포 후 첫 웹 요청 때 앱이 자동 적용**(`AutoMigrator`, marker `storage/cache/schema_version`)하는 방식으로 전환하고, Actions 호출은 실패를 허용하는 보조 수단으로 남김
 
 ## 발견한 문제
 
