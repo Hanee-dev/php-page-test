@@ -12,6 +12,7 @@ if (PHP_SAPI !== 'cli') {
 $appRoot = getenv('APP_ROOT') ?: '/var/www/app';
 require $appRoot . '/src/bootstrap.php';
 
+use SlowMail\AutoMigrator;
 use SlowMail\Clock;
 use SlowMail\Crypto;
 use SlowMail\LetterService;
@@ -19,6 +20,7 @@ use SlowMail\Mail\MailException;
 use SlowMail\Mail\Mailer;
 use SlowMail\Mail\Message;
 use SlowMail\Mail\NullMailer;
+use SlowMail\Migrator;
 use SlowMail\Services;
 
 // ── 테스트 설정 ────────────────────────────────────────────────
@@ -275,6 +277,84 @@ $result = $scheduler->run(new DateTimeImmutable('2030-01-01 00:00', new DateTime
 check($scheduler->name() === 'mock' && $result->mocked === true && $result->stats === [], '기본 드라이버는 mock, 결과는 mocked');
 check(count($scheduler->calls) === 1, '호출만 기록');
 check($pdo->query("SELECT COUNT(*), SUM(status = 'delivered') FROM letters")->fetch(PDO::FETCH_NUM) == $before, 'DB 를 건드리지 않음(발송 없음)');
+
+// ── 자동 마이그레이션 ─────────────────────────────────────────
+// 마지막 섹션: 테스트 DB 를 비워 "배포 직후 새 DB" 를 만들고, 임시 폴더의 마이그레이션·marker 로 검증한다
+section('자동 마이그레이션 (AutoMigrator)');
+$tmp = sys_get_temp_dir() . '/slowmail-automigrate-' . bin2hex(random_bytes(4));
+$migDir = $tmp . '/migrations';
+$marker = $tmp . '/cache/schema_version';   // cache/ 는 아직 없음 → ensure() 가 만들어야 한다
+mkdir($migDir, 0700, true);
+$realFiles = glob($appRoot . '/migrations/*.sql');
+sort($realFiles, SORT_STRING);
+foreach ($realFiles as $file) {
+    copy($file, $migDir . '/' . basename($file));
+}
+$realVersions = array_map(static fn (string $f): string => basename($f, '.sql'), $realFiles);
+$errorLog = $tmp . '/error.log';
+$prevErrorLog = ini_set('error_log', $errorLog);
+
+/** 예외 없이 끝나면 true */
+function ensureQuietly(AutoMigrator $auto): bool
+{
+    try {
+        $auto->ensure();
+        return true;
+    } catch (Throwable) {
+        return false;
+    }
+}
+/** 호출되면 $called 를 세우고 예외를 던지는 Migrator 대역 (= DB 접근 시도 감지) */
+function forbiddenMigrator(bool &$called): Closure
+{
+    return static function () use (&$called): Migrator {
+        $called = true;
+        throw new RuntimeException('DB 에 접근하면 안 됨');
+    };
+}
+$versions = static fn (): array => $pdo->query('SELECT version FROM schema_migrations ORDER BY version')->fetchAll(PDO::FETCH_COLUMN);
+$markerValue = static fn (): ?string => is_file($marker) ? (string) file_get_contents($marker) : null;
+
+$pdo->exec('SET FOREIGN_KEY_CHECKS = 0');
+foreach ($pdo->query('SHOW TABLES')->fetchAll(PDO::FETCH_COLUMN) as $table) {
+    $pdo->exec("DROP TABLE `$table`");
+}
+$pdo->exec('SET FOREIGN_KEY_CHECKS = 1');
+
+$auto = new AutoMigrator(new Migrator($pdo, $migDir, new Clock()), $migDir, $marker);
+check(ensureQuietly($auto) && $versions() === $realVersions, '새 DB: ensure() 가 모든 마이그레이션 적용');
+check($pdo->query("SHOW TABLES LIKE 'letters'")->fetchColumn() === 'letters', '새 DB: letters 테이블 생성');
+check($markerValue() === end($realVersions), 'marker 폴더를 만들고 최신 버전 기록');
+
+$called = false;
+$ok = ensureQuietly(new AutoMigrator(forbiddenMigrator($called), $migDir, $marker));
+check($ok && !$called, 'marker 가 최신이면 DB 에 접근하지 않음');
+
+$called = false;
+$ok = ensureQuietly(new AutoMigrator(forbiddenMigrator($called), $tmp . '/empty', $tmp . '/none'));
+check($ok && !$called && !is_file($tmp . '/none'), '마이그레이션 파일이 없으면 아무것도 하지 않음');
+
+file_put_contents($migDir . '/990_probe.sql', "CREATE TABLE auto_migrate_probe (id INT);\n");
+check(ensureQuietly($auto) && $versions() === [...$realVersions, '990_probe'], '새 파일 추가 → 그 파일만 적용');
+check($pdo->query("SHOW TABLES LIKE 'auto_migrate_probe'")->fetchColumn() === 'auto_migrate_probe', '새 파일의 테이블 생성');
+check($markerValue() === '990_probe', 'marker 를 새 버전으로 갱신');
+
+file_put_contents($migDir . '/995_broken.sql', "CREATE TABLE auto_migrate_probe (id INT);\n");   // 이미 있는 테이블 → 실패
+check(ensureQuietly($auto), '마이그레이션 SQL 이 실패해도 ensure() 는 예외를 던지지 않음');
+check($markerValue() === '990_probe' && !in_array('995_broken', $versions(), true), '실패하면 marker·schema_migrations 갱신 안 함');
+check(str_contains((string) @file_get_contents($errorLog), '자동 마이그레이션 실패'), '실패는 error_log 에 남김');
+
+// 정리: 테스트가 만든 테이블·기록·파일 (DB 는 원래 마이그레이션만 적용된 상태로 둔다)
+ini_set('error_log', (string) $prevErrorLog);
+$pdo->exec('DROP TABLE IF EXISTS auto_migrate_probe');
+$pdo->exec("DELETE FROM schema_migrations WHERE version IN ('990_probe', '995_broken')");
+foreach ([...glob($migDir . '/*'), $marker, $errorLog] as $file) {
+    @unlink($file);
+}
+@rmdir($migDir);
+@rmdir(dirname($marker));
+@rmdir($tmp);
+check(!is_dir($tmp) && $versions() === $realVersions, '임시 파일·테이블 정리');
 
 // ── 결과 ──────────────────────────────────────────────────────
 echo "\n" . str_repeat('─', 40) . "\n";
