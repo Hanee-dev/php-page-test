@@ -1,0 +1,44 @@
+# main 브랜치에 push되면 deploy/ 내용을 Cafe24 FTP 루트에 동기화
+#
+# 필요한 설정 (GitHub 저장소 → Settings → Secrets and variables → Actions)
+#   Secrets   : FTP_SERVER, FTP_USERNAME, FTP_PASSWORD
+#   Variables : FTP_PROTOCOL   (선택, 기본 ftp — 호스팅이 지원하면 ftps 권장)
+#               FTP_SERVER_DIR (선택, 기본 ./ — FTP 접속 시 www/가 보이는 위치, 끝에 / 필수)
+name: Deploy to Cafe24
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'deploy/**'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: PHP 문법 검사
+        run: find deploy -name '*.php' -print0 | xargs -0 -n1 php -l
+
+      - name: FTP 배포
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ${{ vars.FTP_PROTOCOL || 'ftp' }}
+          local-dir: ./deploy/
+          server-dir: ${{ vars.FTP_SERVER_DIR || './' }}
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/README.txt
