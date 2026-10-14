@@ -37,7 +37,10 @@ return [
     ],
 
     'mail' => [
-        // log: storage/mail/*.eml 로 저장 (실제 발송 없음) / null: 아무것도 안 함
+        // 실제 발송 드라이버는 아직 없음(범위 밖).
+        //   log : storage/mail/*.eml 로 저장 — 로컬 개발용
+        //   null: 아무것도 저장하지 않음 — 운영(배포 시 자동 설정)
+        // log/null 이면 확인 메일이 나가지 않으므로 확인 링크를 화면에 대신 보여 준다.
         'driver'    => 'log',
         // Cafe24 등 호스팅에 등록된 도메인 주소 (SPF/DKIM 정렬)
         'from'      => 'noreply@hanee.shop',

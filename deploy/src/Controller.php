@@ -58,7 +58,7 @@ final class Controller
         }
 
         flash('posted', $result['letter'] + [
-            'verify_url' => $this->config['app']['debug'] ? $result['verify_url'] : null,
+            'verify_url' => $this->showsVerifyLink() ? $result['verify_url'] : null,
         ]);
         redirect(url('posted'));
     }
@@ -128,6 +128,13 @@ final class Controller
     public function message(int $status, string $heading, string $text): void
     {
         $this->render('message', $heading, ['heading' => $heading, 'text' => $text], $status);
+    }
+
+    /** 실제 메일이 나가지 않는 동안(log/null 드라이버)이나 debug 일 때만 확인 링크를 화면에 보여 준다 */
+    private function showsVerifyLink(): bool
+    {
+        return $this->config['app']['debug']
+            || in_array($this->config['mail']['driver'], ['log', 'null'], true);
     }
 
     private function renderVerifyState(?array $letter, string $token): void
