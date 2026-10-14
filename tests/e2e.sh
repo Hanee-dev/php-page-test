@@ -61,6 +61,14 @@ has "남은 날 수 표시" "$S" "days__num"
 has "링크 재클릭 → 이미 봉인" "$(curl -s -c "$J" -b "$J" "$VURL")" "이미 봉인된 편지예요"
 expect "잘못된 토큰 404" "$(code "$B/verify?t=abc")" 404
 
+echo "배포용 마이그레이션 엔드포인트"
+OPS=${OPS_TOKEN:-local-ops-token}
+expect "토큰 없으면 404" "$(code -X POST "$B/index.php?r=ops/migrate")" 404
+expect "틀린 토큰 404" "$(code -X POST -H "X-Ops-Token: wrong" "$B/index.php?r=ops/migrate")" 404
+expect "GET 은 404" "$(code -H "X-Ops-Token: $OPS" "$B/index.php?r=ops/migrate")" 404
+M=$(curl -s -X POST -H "X-Ops-Token: $OPS" "$B/index.php?r=ops/migrate")
+has "올바른 토큰 → 마이그레이션 실행(JSON)" "$M" '"ok":true'
+
 echo "저장소 접근 차단(웹 루트 밖)"
 expect "config 직접 접근 불가" "$(code "$B/../config/config.php")" 404
 

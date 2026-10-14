@@ -41,6 +41,7 @@ try {
         $route === 'sealed'                     => $controller->sealed(),
         $route === 'about'                      => $controller->page('about', '편지는 이렇게 보관됩니다'),
         $route === 'privacy'                    => $controller->page('privacy', '개인정보처리방침'),
+        $route === 'ops/migrate' && $method === 'POST' => $controller->opsMigrate(),
         default                                 => $controller->notFound(),
     };
 } catch (Throwable $e) {

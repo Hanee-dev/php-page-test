@@ -20,7 +20,7 @@ return [
         'keys'     => [1 => 'REPLACE_WITH_BASE64_32_BYTES'],
         'hmac_key' => 'REPLACE_WITH_BASE64_32_BYTES',
     ],
-    'cron' => [
-        'token' => 'local-cron-token',
+    'ops' => [
+        'token' => 'local-ops-token',
     ],
 ];

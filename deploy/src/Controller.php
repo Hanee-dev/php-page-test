@@ -115,6 +115,31 @@ final class Controller
         ]);
     }
 
+    /**
+     * 배포 직후 마이그레이션 (GitHub Actions 전용)
+     * 공유 호스팅의 CGI/FPM 은 Authorization 헤더를 떨어뜨리는 경우가 있어 X-Ops-Token 헤더를 쓴다.
+     */
+    public function opsMigrate(): void
+    {
+        $expected = (string) ($this->config['ops']['token'] ?? '');
+        $given = (string) ($_SERVER['HTTP_X_OPS_TOKEN'] ?? '');
+        if ($expected === '' || !hash_equals($expected, $given)) {
+            $this->notFound();
+            return;
+        }
+
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: no-store');
+        try {
+            $applied = $this->services->migrator()->run();
+            echo json_encode(['ok' => true, 'applied' => $applied], JSON_UNESCAPED_UNICODE);
+        } catch (\Throwable $e) {
+            error_log('[slowmail] 마이그레이션 실패: ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['ok' => false, 'error' => 'migration failed (서버 error_log 확인)'], JSON_UNESCAPED_UNICODE);
+        }
+    }
+
     public function page(string $name, string $title): void
     {
         $this->render($name, $title, ['config' => $this->config]);

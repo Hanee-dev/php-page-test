@@ -86,7 +86,9 @@ return [
         'driver' => 'mock',
     ],
 
-    'cron' => [
+    // 배포 직후 GitHub Actions 가 POST /index.php?r=ops/migrate 로 마이그레이션을 실행할 때 쓰는 토큰.
+    // 비어 있으면 엔드포인트 자체가 404
+    'ops' => [
         'token' => '',
     ],
 ];
