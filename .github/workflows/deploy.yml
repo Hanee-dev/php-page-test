@@ -69,12 +69,16 @@ jobs:
 
       # FTP 만 쓸 수 있는 호스팅이라 서버에서 명령을 실행할 수 없으므로, 토큰으로 보호한 엔드포인트를 호출한다.
       # pretty URL(FallbackResource) 동작 여부와 무관하게 index.php?r= 형태로 부른다.
+      # 단, Cafe24 가 해외 IP 웹 접근을 차단하므로 대개 403 — 실제 적용은 첫 웹 요청 때 앱이 수행(AutoMigrator).
+      # 그래서 이 단계는 보조 수단이며 실패해도 배포를 실패로 만들지 않는다.
+      # -d '' : Content-Length 없는 POST 는 Cafe24 앞단 프록시가 404 로 거부한다.
       - name: DB 마이그레이션
+        continue-on-error: true
         env:
           APP_URL: ${{ vars.APP_URL }}
           OPS_TOKEN: ${{ secrets.OPS_TOKEN }}
         run: |
-          curl --fail-with-body -sS --retry 3 --retry-delay 5 -X POST \
+          curl --fail-with-body -sS --retry 3 --retry-delay 5 -X POST -d '' \
             -H "X-Ops-Token: $OPS_TOKEN" \
             "${APP_URL%/}/index.php?r=ops/migrate"
           echo
