@@ -1,0 +1,4 @@
+# 존재하지 않는 경로는 모두 index.php 로 (Apache mod_dir 2.2.16+)
+# 공유 호스팅에서 AllowOverride 범위를 넘으면 500 이 나므로 Options 등은 넣지 않는다
+FallbackResource /index.php
+DirectoryIndex index.php

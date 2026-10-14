@@ -13,6 +13,8 @@ return [
         'debug'       => false,
         // Cafe24 에서 FallbackResource 가 동작하지 않으면 false (→ /index.php?r=write 형태)
         'pretty_urls' => true,
+        // 개인정보처리방침에 표시하는 문의처
+        'contact_email' => 'join@hanee.shop',
     ],
 
     // 표시·입력 기준 시간대. DB 에는 항상 UTC 로 저장
